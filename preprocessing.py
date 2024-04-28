@@ -22,6 +22,7 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
+
 def windowing():
     png_dir = os.path.expanduser('/kaggle/input/rsna-png-dataset/kaggle/working/cancer/')
     
@@ -59,6 +60,52 @@ def hist_eq(src_dir, tar_dir):
         
         filename = os.path.basename(file)
         cv2.imwrite(os.path.join(enhanced_dir, f'{os.path.splitext(filename)[0]}_enhanced.png'), img_stretched)
-    
+
+class MammogramDataset(Dataset):
+    def __init__(self, image_files, labels, transform=None):
+        self.image_files = image_files
+        self.labels = labels
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        image = Image.open(self.image_files[idx]).convert('RGB')
+        if self.transform:
+            image = self.transform(image)
+        return image, self.labels[idx]
+
+image_files = []
+labels = []
+
+for class_name in classes:
+    class_dir = os.path.join(png_dir, class_name)
+    for file_name in os.listdir(class_dir):
+        if file_name.endswith('.png'):
+            image_files.append(os.path.join(class_dir, file_name))
+            labels.append(classes.index(class_name))
+
+train_files, val_files, train_labels, val_labels = train_test_split(image_files, labels, test_size=0.2, random_state=42)
+
+train_dataset = MammogramDataset(train_files, train_labels, transform)
+val_dataset = MammogramDataset(val_files, val_labels, transform)
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+
+model = timm.create_model('vit_base_patch16_224', pretrained=True, num_classes=len(classes))
+
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters())
+
+for epoch in range(10):
+    for inputs, labels in train_loader:
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
     
 dcm_to_png('dicom_folder', 'png_folder')
