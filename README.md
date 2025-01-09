@@ -18,8 +18,11 @@ The system uses a pre-trained ViT model fine-tuned on mammogram images to classi
 * captum
 * matplotlib
 
+## Download the dataset from Kaggle: https://www.kaggle.com/competitions/rsna-breast-cancer-detection/data
+
 ## Install dependencies using: 
 pip install -r requirement.txt
 
+## To run the code: python3 main.py
 
 
